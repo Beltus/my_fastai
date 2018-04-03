@@ -1,8 +1,6 @@
-fastai/
-dl1/fastai/
-dl2/fastai/
-background/
+/fastai/*
+/background/*
 temp.png
-.idea/
-utils/
-ml/
+/.idea/*
+/utils/*
+/ml/*
