@@ -1,6 +1,9 @@
-/fastai/*
 /background/*
 temp.png
 /.idea/*
 /utils/*
 /ml/*
+/data/*
+dl2/\.ipynb_checkpoints/
+
+fastai

@@ -1023,7 +1023,8 @@ size [64,3,64,64] cf [64,3,224,224] for same stage in pascal.ipynb
 
 lr=1e-3
 #use_clr sets shed to use CircularLR
-learn.fit(lrs=lr, n_cycle=1, cycle_len=3, use_clr=(32,5))
+learn.fijupyter lab --port 8889
+t(lrs=lr, n_cycle=1, cycle_len=3, use_clr=(32,5))
 
 
 # In[ ]:
