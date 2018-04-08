@@ -40,8 +40,7 @@ plt.ion()
 
 # In[11]:
 
-
-PATH = Path('/mnt/samsung_1tb/Data/fastai/tiny-imagenet/tiny_imagenet_restructured/')
+PATH = Path('..')/'data/tiny-imagenet/tiny_imagenet_restructured/'
 
 
 # In[12]:
