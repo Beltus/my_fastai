@@ -31,9 +31,7 @@ plt.ion()
 
 # In[18]:
 
-
-#TODO symlink data to Data/fastai
-PATH = Path('/mnt/samsung_1tb/Data/fastai/pascal/pascal_direct')
+PATH = Path('..')/'data/pascal/pascal_direct'
 JPEGS = 'train/VOC2007/JPEGImages/'
 IMG_PATH = PATH/JPEGS
 

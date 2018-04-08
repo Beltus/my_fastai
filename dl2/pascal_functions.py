@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 # - p
 # - l
 
-PATH = Path('/mnt/samsung_1tb/Data/fastai/pascal/pascal_direct')
+PATH = Path('..')/'data/pascal/pascal_direct'
 logger.debug(f'PATH: {list(PATH.iterdir())}')
 
 

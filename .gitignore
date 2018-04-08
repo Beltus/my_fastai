@@ -7,3 +7,7 @@ temp.png
 dl2/\.ipynb_checkpoints/
 
 fastai
+
+*.pkl
+
+*.png
