@@ -6,4 +6,6 @@ temp.png
 /data/*
 dl2/\.ipynb_checkpoints/
 
+*.png
+
 fastai
