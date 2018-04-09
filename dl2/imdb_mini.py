@@ -58,7 +58,7 @@ opt_fn = partial(optim.Adam, betas=(0.8, 0.99))
 wd = 1e-7
 # grab 70 at a time
 bptt = 70
-bs = 52
+#bs = 52
 
 def get_texts(path):
     texts,labels = [],[]
@@ -253,7 +253,7 @@ def wikitext103_conversion(itos, trn_lm, data_subset_frac):
     return wgts
 
 
-def language_model(trn_lm, val_lm, vocab_size):
+def language_model(trn_lm, val_lm, vocab_size, bs=52):
     print('>>language_model()')
     # ## Language Model
 
@@ -319,6 +319,19 @@ def fit_final_layer(model_data, drops_scalar, wgts, data_subset_frac):
     print(f'elapsed: {end - start}')
     print(f'{vals}',flush=True)
     learner.save('lm_last_fit'+'_' + str(data_subset_frac))
+    return vals, learner, lrs
+
+def train_full_model_fast(learner, lrs, data_subset_frac):
+    print('>>train_full_model()')
+    learner.load('lm_last_fit'+'_' + str(data_subset_frac))
+
+    learner.unfreeze()
+    learner.lr_find(start_lr=lrs/10, end_lr=lrs*10, linear=True)
+
+    vals = learner.fit(lrs, 1, wds=wd, use_clr=(20,10), cycle_len=3)
+
+    learner.save('lm1'+'_' + str(data_subset_frac))
+    learner.save_encoder('lm1_enc'+'_' + str(data_subset_frac))
     return vals
 
 
@@ -389,50 +402,93 @@ def classifier_tokens(data_subset_frac):
 
 # ## Classifier
 
-def test_dropout_stability(wgts, data_subset_frac):
+def test_dropout_stability():
     #run through this nx, look at variation over runs
-    runs = 1
-    trn_lm, val_lm, itos = get_lookups(data_subset_frac)
-    vocab_size = len(itos)
-    x_list = []
-    y1_list = []
-    y0_list= []
-    for run in range(runs):
-        #will be different each time
-        model_data = language_model(trn_lm, val_lm, vocab_size)
-        scalar_vals = drops_sensitivity_final_layer(model_data, wgts, data_subset_frac)
-        lists = sorted(scalar_vals.items())
-        x, y = zip(*lists)
-        y0 = [i[0] for i in y]
-        y1 = [i[1] for i in y]
-        x_list.append(x)
-        y0_list.append(y0)
-        y1_list.append(y1)
-    print(f'y0_list: {y0_list}, y1_list: {y1_list}')
-    name_0 = 'drops_sens_final_layer_val_loss_{0}_{1}_runs.png'.format(DATA_SUBSET, runs)
-    plot_multi_lines(x_list, y0_list, runs, name_0)
-    name_1 = 'drops_sens_final_layer_acc_{0}_{1}_runs.png'.format(DATA_SUBSET, runs)
-    plot_multi_lines(x_list, y1_list, runs, name_1)
+    data_subset_list = [50, 10]
+    for data_subset_frac in range(data_subset_list):
+        trn_lm, val_lm, itos = get_lookups(data_subset_frac)
+        wgts = wikitext103_conversion(itos, trn_lm, data_subset_frac)
+        runs = 20
+        trn_lm, val_lm, itos = get_lookups(data_subset_frac)
+        vocab_size = len(itos)
+        x_list = []
+        y1_list = []
+        y0_list= []
+        for run in range(runs):
+            #will be different each time
+            model_data = language_model(trn_lm, val_lm, vocab_size)
+            scalar_vals = drops_sensitivity_final_layer(model_data, wgts, data_subset_frac)
+            lists = sorted(scalar_vals.items())
+            x, y = zip(*lists)
+            y0 = [i[0] for i in y]
+            y1 = [i[1] for i in y]
+            x_list.append(x)
+            y0_list.append(y0)
+            y1_list.append(y1)
+        print(f'y0_list: {y0_list}, y1_list: {y1_list}')
+        name_0 = 'drops_sens_final_layer_val_loss_{0}_{1}_runs.png'.format(DATA_SUBSET, runs)
+        plot_multi_lines(x_list, y0_list, runs, name_0)
+        name_1 = 'drops_sens_final_layer_acc_{0}_{1}_runs.png'.format(DATA_SUBSET, runs)
+        plot_multi_lines(x_list, y1_list, runs, name_1)
 
 def test_data_subset_sensitivity(drops_scalar=0.7):
-    data_sz_list = [100, 50, 25, 10, 5]
+    data_sz_list = [200]
     val_dict = {}
+    val_dict_full = {}
     for data_subset_frac in data_sz_list:
+        start = timer()
         trn_texts, val_texts, col_names = create_class_files(data_subset_frac)
         create_train_test_files(trn_texts, val_texts, col_names, data_subset_frac)
         tok_trn, tok_val = create_tokens(data_subset_frac)
         create_token_lookups(tok_trn, tok_val, data_subset_frac)
-
         trn_lm, val_lm, itos = get_lookups(data_subset_frac)
         vocab_size = len(itos)
         wgts = wikitext103_conversion(itos, trn_lm, data_subset_frac)
         model_data = language_model(trn_lm, val_lm, vocab_size)
-        vals = fit_final_layer(model_data, drops_scalar, wgts, data_subset_frac)
-        print(f'run {data_subset_frac} complete')
+        vals, learner, lrs = fit_final_layer(model_data, drops_scalar, wgts, data_subset_frac)
         val_dict[data_subset_frac] = vals
-        save_obj(val_dict, 'data_subset_sensitivity_{0}'.format(data_subset_frac))
-    save_obj(val_dict, 'data_subset_sensitivity')
+        #save as we go in case something happens
+        save_obj(vals, 'data_subset_sens_last_{0}'.format(data_subset_frac))
+        vals = train_full_model_fast(learner, lrs, data_subset_frac)
+        val_dict_full[data_subset_frac] = vals
+        save_obj(vals, 'data_subset_sens_full_3_epoch_{0}'.format(data_subset_frac))
+        end = timer()
+        print(f'run {data_subset_frac} complete')
+        elapsed = end - start
+        print(elapsed)
 
+    save_obj(val_dict, 'data_subset_sens_last')
+    save_obj(val_dict, 'data_subset_sens_full_3_epoch')
+
+def test_bs_sensitivity(drops_scalar=0.7):
+    bs_list = [64, 32, 26, 8, 1]
+    data_subset_frac = 50
+    val_dict = {}
+    val_dict_full = {}
+    for bs in bs_list:
+        start = timer()
+        trn_texts, val_texts, col_names = create_class_files(data_subset_frac)
+        create_train_test_files(trn_texts, val_texts, col_names, data_subset_frac)
+        tok_trn, tok_val = create_tokens(data_subset_frac)
+        create_token_lookups(tok_trn, tok_val, data_subset_frac)
+        trn_lm, val_lm, itos = get_lookups(data_subset_frac)
+        vocab_size = len(itos)
+        wgts = wikitext103_conversion(itos, trn_lm, data_subset_frac)
+        model_data = language_model(trn_lm, val_lm, vocab_size, bs)
+        vals, learner, lrs = fit_final_layer(model_data, drops_scalar, wgts, data_subset_frac)
+        val_dict[bs] = vals
+        #save as we go in case something happens
+        save_obj(vals, 'data_subset_sens_last_{0}_bs_{1}'.format(data_subset_frac, bs))
+        vals = train_full_model_fast(learner, lrs, data_subset_frac)
+        val_dict_full[bs] = vals
+        save_obj(vals, 'data_subset_sens_full_3_epoch_{0}_bs_{1}'.format(data_subset_frac, bs))
+        end = timer()
+        print(f'run {data_subset_frac} complete')
+        elapsed = end - start
+        print(elapsed)
+
+    save_obj(val_dict, 'data_subset_sens_last_bs')
+    save_obj(val_dict, 'data_subset_sens_full_3_epoch_bs')
 
 
 def workflow():
@@ -448,13 +504,14 @@ def workflow():
     #model_data = language_model(trn_lm, val_lm, vocab_size)
     #fit_final_layer(model_data)
 
-    #dropout_stability workflow
-    # trn_lm, val_lm, itos = get_lookups(data_subset_frac=50)
-    # wgts = wikitext103_conversion(itos, trn_lm, data_subset_frac=50)
-    # test_dropout_stability(wgts, data_subset_frac=50)
-
     # data subset workflow
-    test_data_subset_sensitivity()
+    #test_data_subset_sensitivity()
+
+    # batch size workflow
+    test_bs_sensitivity()
+
+    #dropout_stability workflow
+    #test_dropout_stability()
 
     end = timer()
     elapsed = end - start
