@@ -9,3 +9,5 @@ dl1/\fastai/
 *.png
 *.pkl
 *.png
+
+dl2/imdb_var_ds\.ipynb_
