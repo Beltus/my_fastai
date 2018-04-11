@@ -266,7 +266,8 @@ def language_model(trn_lm, val_lm, vocab_size, bs=52):
 def drops_sensitivity_final_layer(model_data, wgts, data_subset_frac):
     print('>>drops_sensitivity_final_layer()')
     scalar_vals = {}
-    for i in range(1, 11):
+    #would sometimes fail with error when scalar =0.1 so starting at 0.2
+    for i in range(2, 11):
         vals = fit_final_layer(model_data, i/10, wgts, data_subset_frac)
         scalar_vals[i/10] = vals
     print(scalar_vals)
@@ -295,8 +296,9 @@ def plot_tuple_dict(d, run):
 
 
 
-def fit_final_layer(model_data, drops_scalar, wgts, data_subset_frac):
+def fit_final_layer(model_data, drops_scalar, wgts, data_subset_frac, use_pt_wgts=True):
     print('>>fit_final_layer() drops_scalar: {0}'.format(drops_scalar))
+    assert drops_scalar >= 0.1
     assert drops_scalar<=1.0
     drops = np.array([0.25, 0.1, 0.2, 0.02, 0.15])*drops_scalar
 
@@ -308,12 +310,15 @@ def fit_final_layer(model_data, drops_scalar, wgts, data_subset_frac):
     learner.metrics = [accuracy]
     learner.unfreeze
 
-    learner.model.load_state_dict(wgts)
+    if use_pt_wgts:
+        learner.model.load_state_dict(wgts)
 
     lr=1e-3
     lrs=lr
 
     start = timer()
+    #getting torch.backends.cudnn.CuDNNError: 8: b'CUDNN_STATUS_EXECUTION_FAILED' here
+    #when going dropout parameter testing
     vals = learner.fit(lrs/2, 1, wds=wd, use_clr=(32,2), cycle_len=1)
     end = timer()
     print(f'elapsed: {end - start}')
@@ -361,11 +366,11 @@ def train_full_model(learner, lrs, data_subset_frac):
     plt.show()
 
 def save_obj(obj, name ):
-    with open('img/'+ name + '.pkl', 'wb') as f:
+    with open('data_tests/'+ name + '.pkl', 'wb') as f:
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 def load_obj(name ):
-    with open('img/' + name + '.pkl', 'rb') as f:
+    with open('data_tests/' + name + '.pkl', 'rb') as f:
         return pickle.load(f)
 
 def classifier_tokens(data_subset_frac):
@@ -404,8 +409,8 @@ def classifier_tokens(data_subset_frac):
 
 def test_dropout_stability():
     #run through this nx, look at variation over runs
-    data_subset_list = [50, 10]
-    for data_subset_frac in range(data_subset_list):
+    data_subset_list = [25, 10, 5, 1]
+    for data_subset_frac in data_subset_list:
         trn_lm, val_lm, itos = get_lookups(data_subset_frac)
         wgts = wikitext103_conversion(itos, trn_lm, data_subset_frac)
         runs = 20
@@ -431,8 +436,8 @@ def test_dropout_stability():
         name_1 = 'drops_sens_final_layer_acc_{0}_{1}_runs.png'.format(DATA_SUBSET, runs)
         plot_multi_lines(x_list, y1_list, runs, name_1)
 
-def test_data_subset_sensitivity(drops_scalar=0.7):
-    data_sz_list = [200]
+def test_data_subset_sensitivity(drops_scalar=0.7, use_pt_wgts=True):
+    data_sz_list = [200, 100, 50, 25, 10, 2, 1]
     val_dict = {}
     val_dict_full = {}
     for data_subset_frac in data_sz_list:
@@ -445,24 +450,27 @@ def test_data_subset_sensitivity(drops_scalar=0.7):
         vocab_size = len(itos)
         wgts = wikitext103_conversion(itos, trn_lm, data_subset_frac)
         model_data = language_model(trn_lm, val_lm, vocab_size)
-        vals, learner, lrs = fit_final_layer(model_data, drops_scalar, wgts, data_subset_frac)
+        vals, learner, lrs = fit_final_layer(model_data, drops_scalar, wgts, data_subset_frac, use_pt_wgts)
         val_dict[data_subset_frac] = vals
         #save as we go in case something happens
-        save_obj(vals, 'data_subset_sens_last_{0}'.format(data_subset_frac))
+        if use_pt_wgts:
+            save_obj(vals, 'data_subset_sens_last_{0}'.format(data_subset_frac))
+        else:
+            save_obj(vals, 'data_subset_sens_last_no_pt_{0}'.format(data_subset_frac))
         vals = train_full_model_fast(learner, lrs, data_subset_frac)
         val_dict_full[data_subset_frac] = vals
-        save_obj(vals, 'data_subset_sens_full_3_epoch_{0}'.format(data_subset_frac))
+        if use_pt_wgts:
+            save_obj(vals, 'data_subset_sens_full_3_epoch_{0}'.format(data_subset_frac))
+        else:
+            save_obj(vals, 'data_subset_sens_full_3_no_pt_epoch_{0}'.format(data_subset_frac))
         end = timer()
         print(f'run {data_subset_frac} complete')
         elapsed = end - start
         print(elapsed)
 
-    save_obj(val_dict, 'data_subset_sens_last')
-    save_obj(val_dict, 'data_subset_sens_full_3_epoch')
-
 def test_bs_sensitivity(drops_scalar=0.7):
-    bs_list = [64, 32, 26, 8, 1]
-    data_subset_frac = 50
+    bs_list = [64, 32, 16, 8, 1]
+    data_subset_frac = 10
     val_dict = {}
     val_dict_full = {}
     for bs in bs_list:
@@ -505,13 +513,13 @@ def workflow():
     #fit_final_layer(model_data)
 
     # data subset workflow
-    #test_data_subset_sensitivity()
+    test_data_subset_sensitivity(drops_scalar=0.7, use_pt_wgts=False)
+
+    #dropout_stability workflow
+    test_dropout_stability()
 
     # batch size workflow
     test_bs_sensitivity()
-
-    #dropout_stability workflow
-    #test_dropout_stability()
 
     end = timer()
     elapsed = end - start

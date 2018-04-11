@@ -7,8 +7,5 @@ dl2/\.ipynb_checkpoints/
 dl2/\fastai/
 dl1/\fastai/
 *.png
-
-
 *.pkl
-
 *.png

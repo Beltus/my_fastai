@@ -13,13 +13,17 @@ def plot_multi_lines(x_list, y_list, n_runs, name):
     plt.savefig(name)
     plt.close()
 
-file_prefix = 'data_subset_sens_full_3_epoch_'
-files = ['5', '10', '50']
-
 data_dict = {}
+
+file_prefix = 'data_subset_sens_full_3_no_pt_epoch_'
+files = ['1', '2', '10', '25', '50', '100', '200']
+
 for i in files:
     file_name = file_prefix+str(i)
     data = load_obj(file_name)
     data_dict[i] = data
 
+
+#data = load_obj('data_subset_sens_full_3_epoch')
+#data_dict[i] = data
 print (data_dict)
