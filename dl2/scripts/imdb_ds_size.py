@@ -352,7 +352,7 @@ def train_full_model(learner, lrs, data_subset_frac):
     print(f'elapsed: {end - start}')
 
     learner.sched.plot()
-    plt.show()
+    #plt.show()
 
     start = timer()
     learner.fit(lrs, 1, wds=wd, use_clr=(20,10), cycle_len=15)
@@ -363,7 +363,7 @@ def train_full_model(learner, lrs, data_subset_frac):
     learner.save_encoder('lm1_enc'+'_' + str(data_subset_frac))
 
     learner.sched.plot_loss()
-    plt.show()
+    #plt.show()
 
 def save_obj(obj, name ):
     with open('data_tests/'+ name + '.pkl', 'wb') as f:
@@ -376,12 +376,21 @@ def load_obj(name ):
 def classifier_tokens(data_subset_frac):
     # ## Classifier Tokens
 
-
     df_trn = pd.read_csv(str(CLAS_PATH)+'/train'+'_' + str(data_subset_frac)+'.csv', header=None, chunksize=CHUNKSIZE)
     df_val = pd.read_csv(str(CLAS_PATH)+'/test'+'_' + str(data_subset_frac)+'.csv', header=None, chunksize=CHUNKSIZE)
 
     tok_trn, trn_labels = get_all(tf_reader=df_trn, n_lbls=1)
     tok_val, val_labels = get_all(tf_reader=df_trn, n_lbls=1)
+    '''
+    #clip data
+    trn_upper_clip = int(len(trn_texts)/data_subset_frac)
+    val_upper_clip = int(len(val_texts) / data_subset_frac)
+
+    trn_texts = trn_texts[:trn_upper_clip]
+    trn_labels = trn_labels[:trn_upper_clip]
+    val_texts = val_texts[:val_upper_clip]
+    val_labels = val_labels[:val_upper_clip]
+    '''
 
     (CLAS_PATH/'tmp').mkdir(exist_ok=True)
 
@@ -404,8 +413,80 @@ def classifier_tokens(data_subset_frac):
     np.save(str(CLAS_PATH)+'/tmp/trn_ids'+'_' + str(data_subset_frac)+'.npy', trn_clas)
     np.save(str(CLAS_PATH)+'/tmp/val_ids'+'_' + str(data_subset_frac)+'.npy', val_clas)
 
+def classifier(itos, data_subset_frac):
+    # ## Classifier
 
-# ## Classifier
+    trn_clas = np.load(str(CLAS_PATH)+'/tmp/trn_ids'+'_' + str(data_subset_frac)+'.npy')
+    val_clas = np.load(str(CLAS_PATH)+'/tmp/val_ids'+'_' + str(data_subset_frac)+'.npy')
+
+    trn_labels = np.squeeze(np.load(str(CLAS_PATH)+'/tmp'/'trn_labels'+'_' + str(data_subset_frac)+'.npy'))
+    val_labels = np.squeeze(np.load(str(CLAS_PATH)+'/tmp'/'val_labels'+'_' + str(data_subset_frac)+'.npy'))
+
+    bptt,em_sz,nh,nl = 70,400,1150,3
+    vs = len(itos)
+    opt_fn = partial(optim.Adam, betas=(0.8, 0.99))
+    bs = 48
+
+    min_lbl = trn_labels.min()
+    trn_labels -= min_lbl
+    val_labels -= min_lbl
+    c=int(trn_labels.max())+1
+
+    trn_ds = TextDataset(trn_clas, trn_labels)
+    val_ds = TextDataset(val_clas, val_labels)
+    trn_samp = SortishSampler(trn_clas, key=lambda x: len(trn_clas[x]), bs=bs//2)
+    val_samp = SortSampler(val_clas, key=lambda x: len(val_clas[x]))
+    trn_dl = DataLoader(trn_ds, bs//2, transpose=True, num_workers=1, pad_idx=1, sampler=trn_samp)
+    val_dl = DataLoader(val_ds, bs, transpose=True, num_workers=1, pad_idx=1, sampler=val_samp)
+    md = ModelData(PATH, trn_dl, val_dl)
+
+    # part 1
+    dps = np.array([0.4, 0.5, 0.05, 0.3, 0.1])
+
+    dps = np.array([0.4,0.5,0.05,0.3,0.4])*0.5
+
+    m = get_rnn_classifer(bptt, 20*70, c, vs, emb_sz=em_sz, n_hid=nh, n_layers=nl, pad_token=1,
+              layers=[em_sz*3, 50, c], drops=[dps[4], 0.1],
+              dropouti=dps[0], wdrop=dps[1], dropoute=dps[2], dropouth=dps[3])
+
+    opt_fn = partial(optim.Adam, betas=(0.7, 0.99))
+
+    learn = RNN_Learner(md, TextModel(to_gpu(m)), opt_fn=opt_fn)
+    learn.reg_fn = partial(seq2seq_reg, alpha=2, beta=1)
+    learn.clip=25.
+    learn.metrics = [accuracy]
+
+    lr=3e-3
+    lrm = 2.6
+    lrs = np.array([lr/(lrm**4), lr/(lrm**3), lr/(lrm**2), lr/lrm, lr])
+
+    lrs=np.array([1e-4,1e-4,1e-4,1e-3,1e-2])
+
+    #wd = 1e-7
+    #wd = 0
+    #learn.load_encoder('lm2_enc')
+
+    learn.freeze_to(-1)
+
+    learn.lr_find(lrs/1000)
+    #learn.sched.plot()
+
+    learn.fit(lrs, 1, wds=wd, cycle_len=1, use_clr=(8,3))
+
+    learn.save('clas_0'+'_' + str(data_subset_frac))
+    learn.load('clas_0'+'_' + str(data_subset_frac))
+
+    learn.freeze_to(-2)
+
+    learn.fit(lrs, 1, wds=wd, cycle_len=1, use_clr=(8,3))
+
+    learn.save('clas_1'+'_' + str(data_subset_frac))
+    learn.load('clas_1'+'_' + str(data_subset_frac))
+    learn.unfreeze()
+    learn.fit(lrs, 1, wds=wd, cycle_len=14, use_clr=(32,10))
+    #learn.sched.plot_loss()
+    learn.save('clas_2'+'_' + str(data_subset_frac))
+
 
 def test_dropout_stability():
     #run through this nx, look at variation over runs
@@ -504,22 +585,27 @@ def workflow():
     #only need to run these once
     #trn_texts, val_texts, col_names = create_class_files()
     #create_train_test_files(trn_texts, val_texts, col_names)
-    #tok_trn, tok_val = create_tokens()
-    #create_token_lookups(tok_trn, tok_val)
-    #trn_lm, val_lm, itos = get_lookups(data_subset_frac=50)
-    #vocab_size = len(itos)
-    #wgts = wikitext103_conversion(itos, trn_lm, data_subset_frac=50)
-    #model_data = language_model(trn_lm, val_lm, vocab_size)
-    #fit_final_layer(model_data)
+    data_subset_frac = 100
+    tok_trn, tok_val = create_tokens(data_subset_frac=data_subset_frac)
+    create_token_lookups(tok_trn, tok_val,data_subset_frac=data_subset_frac)
+    trn_lm, val_lm, itos = get_lookups(data_subset_frac=data_subset_frac)
+    vocab_size = len(itos)
+    wgts = wikitext103_conversion(itos, trn_lm, data_subset_frac=data_subset_frac)
+    model_data = language_model(trn_lm, val_lm, vocab_size)
+    vals, learner, lrs = fit_final_layer(model_data, drops_scalar=0.7, wgts=wgts, data_subset_frac=data_subset_frac)
+    vals = train_full_model_fast(learner, lrs, data_subset_frac=data_subset_frac)
+    train_full_model(learner, lrs, data_subset_frac=data_subset_frac)
+    classifier_tokens(data_subset_frac=data_subset_frac)
+    classifier(itos, data_subset_frac=data_subset_frac)
 
     # data subset workflow
-    test_data_subset_sensitivity(drops_scalar=0.7, use_pt_wgts=False)
+    #test_data_subset_sensitivity(drops_scalar=0.7, use_pt_wgts=False)
 
     #dropout_stability workflow
-    test_dropout_stability()
+    #test_dropout_stability()
 
     # batch size workflow
-    test_bs_sensitivity()
+    #test_bs_sensitivity()
 
     end = timer()
     elapsed = end - start
