@@ -1,0 +1,17 @@
+#symlink
+ln -s -n ./TargetDirectory ./Nickname
+
+#sync brach with master
+#in my_fastai folder
+cd fastai/
+git remote add upstream https://github.com/fastai/fastai.git
+git fetch upstream
+git pull upstream master
+
+#sync local with remote
+git fetch --all
+git reset --hard origin/master
+
+#flush gpu memory
+sudo fuser -v /dev/nvidia*
+sudo kill -9 PID

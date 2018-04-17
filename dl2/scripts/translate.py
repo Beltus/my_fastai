@@ -350,7 +350,7 @@ def run_seq2seq_learner(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_
 
 def run_seq2seq_learn_fit(learn, run_id, lr=3e-3):
     print('>>run_seq2seq_learn_fit()')
-    vals_s2s, ep_vals_s2s = learn.fit(lr, n_cycle=1, cycle_len=2, use_clr=(20,10), get_ep_vals=True)
+    vals_s2s, ep_vals_s2s = learn.fit(lr, n_cycle=1, cycle_len=12, use_clr=(20,10), get_ep_vals=True)
     save_obj(ep_vals_s2s, 'translate_ep_vals_s2s'+'_'+str(run_id))
     learn.save('translate_learn_s2s'+'_'+str(run_id))
 

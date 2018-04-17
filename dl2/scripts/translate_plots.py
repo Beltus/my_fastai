@@ -77,11 +77,37 @@ def plot_all_ep_vals(ep_val_dict, img_file_name):
     plt.savefig('../img/'+img_file_name)
     plt.close()
 
+def plot_all_ep_train_val(ep_val_dict, img_file_name):
+    plt.ylabel("loss")
+    plt.xlabel("epoch")
+    color=iter(cm.rainbow(np.linspace(0,1,len(ep_val_dict)*2)))
+    for k, v in ep_val_dict.items():
+        print(k)
+        epochs = ep_val_dict[k].keys()
+        plt.xticks(np.asarray(list(epochs)))
+        val_losses = [item[1] for item in list(ep_val_dict[k].values())]
+        train_losses = [item[0] for item in list(ep_val_dict[k].values())]
+        c=next(color)
+        plt.plot(epochs, train_losses, c=c, label='train_'+k, ls='dashed')
+        c=next(color)
+        plt.plot(epochs, val_losses, c=c, label='val_'+k)
+
+    plt.yscale('log')
+    plt.legend(loc='upper left')
+    plt.savefig('../img/'+img_file_name)
+    plt.close()
+
 def plot_method_comparisson():
     ep_val_dict = {}
     ep_val_dict['attn_default'] = load_obj('translate_ep_vals_attn')
     ep_val_dict['attn_tuned'] = load_obj('translate_ep_vals_attn_GRU_plot_params')
-    plot_all_ep_vals(ep_val_dict, img_file_name='translate_all_ep_vals_default_vs_tuned.png')
+    plot_all_ep_vals(ep_val_dict, img_file_name='translate_attn_all_ep_vals_default_vs_tuned.png')
+
+def plot_method_comparisson_0():
+    ep_val_dict = {}
+    ep_val_dict['no_dropout'] = load_obj('translate_ep_vals_s2s_GRU_all_drop_0')
+    ep_val_dict['tuned'] = load_obj('translate_ep_vals_s2s')
+    plot_all_ep_train_val(ep_val_dict, img_file_name='translate_s2s_all_ep_vals_tuned_vs_all_drop_0.png')
 
 def plot_default_params():
     ep_val_dict = {}
@@ -92,18 +118,18 @@ def plot_default_params():
     ep_val_dict['all'] = load_obj('translate_ep_vals_all')
     plot_all_ep_vals(ep_val_dict, img_file_name= 'translate_all_ep_vals_default.png')
 
-def plot_attn(drop_acron, range_strt, range_stop):
+def plot_all_in_range(drop_acron, range_strt, range_stop, arch):
     ep_val_dict = {}
     for i in range(range_strt, range_stop):
         pt_txt = str(i/10)
-        ep_val_dict[f'{drop_acron}_{pt_txt}'] = load_obj(f'translate_ep_vals_attn_{drop_acron}_{i}')
-    plot_all_ep_vals(ep_val_dict, img_file_name=f'translate_attn_{drop_acron}.png')
+        ep_val_dict[f'{drop_acron}_{pt_txt}'] = load_obj(f'translate_ep_vals_{arch}_{drop_acron}_{i}')
+    plot_all_ep_vals(ep_val_dict, img_file_name=f'translate_{arch}_{drop_acron}_{range_strt}-{range_stop}.png')
 
-def batch_attn_val_plots():
+def batch_val_plots(arch='attn'):
     range_strt=1
     range_stop=6
     for acron in ['eed', 'od', 'rdd', 'red']:
-        plot_attn(acron, range_strt, range_stop)
+        plot_all_in_range(acron, range_strt, range_stop, arch)
 
 def batch_final_val_plots(file_base, arch_type):
     range_strt=1
@@ -140,14 +166,24 @@ def batch_seq2seq_val_plots():
     for acron in ['eed', 'od', 'rdd', 'red']:
         plot_seq2seq(acron, range_strt, range_stop, postfix)
 
+def temp_batch_val_plots(arch='attn'):
+    #run not finished, temp plots
+    #TODO set range stop to 10
+    range_strt=1
+    range_stop=9
+    for acron in ['eed', 'rdd', 'red']:
+        plot_all_in_range(acron, range_strt, range_stop, arch)
+
 def workflow():
     start = timer()
     #plot_default_params()
     #plot_method_comparisson()
-    #batch_attn_val_plots()
+    #plot_method_comparisson_0()
+    #batch_val_plots('attn')
+    temp_batch_val_plots(arch = 's2s_GRU_all_drop_0')
     #batch_final_val_plots('translate_ep_vals_attn', arch_type='attn')
     #batch_seq2seq_val_plots()
-    batch_final_val_plots('translate_ep_vals_s2s_GRU', arch_type='s2s')
+    #batch_final_val_plots('translate_ep_vals_s2s_GRU', arch_type='s2s')
     end = timer()
     elapsed = end - start
     print(f'>>workflow() took {elapsed}sec')

@@ -1,4 +1,3 @@
-/background/*
 /.idea/*
 /utils/*
 /ml/*
@@ -8,10 +7,10 @@ dl2/\fastai/
 dl1/\fastai/
 *.pkl
 
-
 dl2/imdb_var_ds\.ipynb_
 \.~lock\.fastai_code\.odp#
 dl2/\.~lock\.imdb_parameter_testing\.xlsx#
+data
 data_large
 dl1/notes/lesson6-rnn_notes\.pdf
 fastai
