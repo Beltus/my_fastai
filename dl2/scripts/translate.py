@@ -279,6 +279,55 @@ def create_emb(vecs, itos, em_sz):
     return emb
 
 
+class Seq2SeqRNNAWD(nn.Module):
+    # fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99,
+    # rnn_type = rnn_type, rnn_enc_drop = rnn_enc_drop, rnn_dec_drop = rnn_dec_drop, emb_enc_drop = emb_enc_drop, out_drop = out_drop
+    def __init__(self, vecs_enc, itos_enc, em_sz_enc, vecs_dec, itos_dec, em_sz_dec, nh, out_sl, nl=2,
+                 rnn_type='GRU', rnn_enc_drop=0.25, rnn_dec_drop=0.1, emb_enc_drop=0.15, out_drop=0.35):
+        super().__init__()
+        self.lockdrop = LockedDropout()
+        self.emb_enc = create_emb(vecs_enc, itos_enc, em_sz_enc)
+        self.nl, self.nh, self.out_sl = nl, nh, out_sl
+        #ntoken, emb_sz, nhid, nlayers, pad_token, bidir=False,
+        #dropouth=0.3, dropouti=0.65, dropoute=0.1, wdrop=0.5
+        self.rnn_enc = RNN_Encoder(ntoken, em_sz_enc, nh, num_layers=nl, pad_token, dropout=rnn_enc_drop)
+        self.out_enc = nn.Linear(nh, em_sz_dec, bias=False)
+        self.emb_dec = create_emb(vecs_dec, itos_dec, em_sz_dec)
+        self.rnn_dec = nn.GRU(em_sz_dec, em_sz_dec, num_layers=nl, dropout=rnn_dec_drop)
+        self.emb_enc_drop = nn.Dropout(emb_enc_drop)
+        self.out_drop = nn.Dropout(out_drop)
+        self.out = nn.Linear(em_sz_dec, len(itos_dec))
+        self.out.weight.data = self.emb_dec.weight.data
+
+        #Merity et al. variable naming
+        self.dropout = out_drop
+        self.dropouti = rnn_dec_drop
+        self.dropouth = rnn_enc_drop
+        self.dropoute = emb_enc_drop
+
+    def forward(self, inp):
+        sl, bs = inp.size()
+        h = self.initHidden(bs)
+        emb = self.emb_enc_drop(self.emb_enc(inp))
+        enc_out, h = self.rnn_enc(emb, h)
+        h = self.out_enc(h)
+
+        dec_inp = V(torch.zeros(bs).long())
+        res = []
+        for i in range(self.out_sl):
+            emb = self.emb_dec(dec_inp).unsqueeze(0)
+            outp, h = self.rnn_dec(emb, h)
+            outp = self.out(self.out_drop(outp[0]))
+            res.append(outp)
+            dec_inp = V(outp.data.max(1)[1])
+            if (dec_inp == 1).all():
+                break
+        return torch.stack(res)
+
+    def initHidden(self, bs):
+        zero_tensor = V(torch.zeros(self.nl, bs, self.nh))
+        return zero_tensor
+
 class Seq2SeqRNN(nn.Module):
     #fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99,
     #rnn_type = rnn_type, rnn_enc_drop = rnn_enc_drop, rnn_dec_drop = rnn_dec_drop, emb_enc_drop = emb_enc_drop, out_drop = out_drop
@@ -819,15 +868,18 @@ def run_attn_drop_0(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_v
     rnn_dec_drop = 0
     emb_enc_drop = 0
     out_drop = 0
-    range_strt = 1
-    range_stop = 9
+    range_strt = 9
+    range_stop = 10
 
     #output prefix: 'translate_ep_vals_attn'
 
+    '''
     # Base run all dropouts zero
     run_id = rnn_type + '_all_drop_0'
     run_attn_learn_fit(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99,
                        nl, rnn_type, rnn_enc_drop, rnn_dec_drop, emb_enc_drop, out_drop, run_id, lr=2e-3)
+    '''
+
     for drop in ['red', 'rdd', 'eed', 'od']:
         for i in range(range_strt, range_stop):
             run_id = rnn_type + f'_all_drop_0_{drop}_{i}'
@@ -852,30 +904,34 @@ def run_s2s_drop_0(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_ve
     rnn_dec_drop=0
     emb_enc_drop=0
     out_drop=0
-    range_strt=1
-    range_stop=9
+    range_strt=9
+    range_stop=10
 
-    #Base run all dropouts zero
-    run_id = 'GRU_all_drop_0'
-    learn = run_seq2seq_learner(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99,
-                                nl, rnn_type, rnn_enc_drop, rnn_dec_drop, emb_enc_drop, out_drop)
-    run_seq2seq_learn_fit(learn, run_id=run_id, lr=3e-3)
+    for nl in [3, 4]:
+        run_id = f'GRU_nl_{nl}_all_drop_0'
 
-    for drop in ['red', 'rdd', 'eed', 'od']:
-        for i in range(range_strt, range_stop):
-            run_id = rnn_type + f'_all_drop_0_{drop}_{i}'
-            drop_val = i / 10
-            if drop == 'red':
-                rnn_enc_drop = drop_val
-            elif drop == 'rdd':
-                rnn_dec_drop = drop_val
-            elif drop=='eed':
-                emb_enc_drop = drop_val
-            elif drop=='od':
-                out_drop = drop_val
-            learn = run_seq2seq_learner(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh,
-                                        enlen_99, nl, rnn_type, rnn_enc_drop, rnn_dec_drop, emb_enc_drop, out_drop)
-            run_seq2seq_learn_fit(learn, run_id=run_id, lr=3e-3)
+        #Base run all dropouts zero
+        run_id = f'GRU_nl_{nl}_all_drop_0'
+        learn = run_seq2seq_learner(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99,
+                                    nl, rnn_type, rnn_enc_drop, rnn_dec_drop, emb_enc_drop, out_drop)
+        run_seq2seq_learn_fit(learn, run_id=run_id, lr=3e-3)
+
+
+        for drop in ['red', 'rdd', 'eed', 'od']:
+            for i in range(range_strt, range_stop):
+                run_id = rnn_type + f'_nl_{nl}_all_drop_0_{drop}_{i}'
+                drop_val = i / 10
+                if drop == 'red':
+                    rnn_enc_drop = drop_val
+                elif drop == 'rdd':
+                    rnn_dec_drop = drop_val
+                elif drop=='eed':
+                    emb_enc_drop = drop_val
+                elif drop=='od':
+                    out_drop = drop_val
+                learn = run_seq2seq_learner(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh,
+                                            enlen_99, nl, rnn_type, rnn_enc_drop, rnn_dec_drop, emb_enc_drop, out_drop)
+                run_seq2seq_learn_fit(learn, run_id=run_id, lr=3e-3)
 
 
 def workflow():
@@ -891,7 +947,7 @@ def workflow():
     trn_dl, val_dl, md = create_dataloaders(trn_ds, val_ds, trn_samp, val_samp)
 
     run_s2s_drop_0(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99)
-    run_attn_drop_0(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99)
+    #run_attn_drop_0(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99)
     
     '''
     run_attn(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99)

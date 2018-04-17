@@ -62,8 +62,7 @@ def scatter_plot_final_val(title, final_val_dict, img_file_name):
     plt.savefig('../img/' + img_file_name)
     plt.close()
 
-def plot_all_ep_vals(ep_val_dict, img_file_name):
-    plt.ylabel("val_loss")
+def plot_all_grad_ep_vals(ep_val_dict, img_file_name):
     plt.xlabel("epoch")
     color=iter(cm.rainbow(np.linspace(0,1,len(ep_val_dict))))
     for k, v in ep_val_dict.items():
@@ -71,8 +70,36 @@ def plot_all_ep_vals(ep_val_dict, img_file_name):
         plt.xticks(np.asarray(list(epochs)))
         val_losses = [item[1] for item in list(ep_val_dict[k].values())]
         c=next(color)
-        plt.plot(epochs, val_losses, c=c, label=k)
-    plt.yscale('log')
+        val_1d = np.gradient(val_losses)
+        plt.plot(epochs, val_1d, c=c, label=k)
+        plt.ylabel("val_loss_1st_derivative")
+        #plt.yscale('log')
+    plt.legend(loc='upper left')
+    plt.savefig('../img/1vd_'+img_file_name)
+    plt.close()
+
+
+def plot_all_ep_vals(ep_val_dict, img_file_name, perplex=False):
+
+    plt.xlabel("epoch")
+    color=iter(cm.rainbow(np.linspace(0,1,len(ep_val_dict))))
+    for k, v in ep_val_dict.items():
+        epochs = ep_val_dict[k].keys()
+        plt.xticks(np.asarray(list(epochs)))
+        val_losses = [item[1] for item in list(ep_val_dict[k].values())]
+        c=next(color)
+        if perplex:
+            #convert loss to perplexity
+            ey_np = np.exp(np.asarray(val_losses))
+            ey_list = ey_np.tolist()
+            plt.plot(epochs, ey_list, c=c, label=k)
+        else:
+            plt.plot(epochs, val_losses, c=c, label=k)
+    if perplex:
+        plt.ylabel("val_perplexity")
+    else:
+        plt.ylabel("val_loss")
+        plt.yscale('log')
     plt.legend(loc='upper left')
     plt.savefig('../img/'+img_file_name)
     plt.close()
@@ -97,17 +124,22 @@ def plot_all_ep_train_val(ep_val_dict, img_file_name):
     plt.savefig('../img/'+img_file_name)
     plt.close()
 
-def plot_method_comparisson():
+def plot_method_comparisson(arch = 's2s', rnn='GRU'):
     ep_val_dict = {}
-    ep_val_dict['attn_default'] = load_obj('translate_ep_vals_attn')
-    ep_val_dict['attn_tuned'] = load_obj('translate_ep_vals_attn_GRU_plot_params')
-    plot_all_ep_vals(ep_val_dict, img_file_name='translate_attn_all_ep_vals_default_vs_tuned.png')
+    ep_val_dict[f'{arch}_default'] = load_obj(f'translate_ep_vals_{arch}')
+    ep_val_dict[f'{arch}_tuned'] = load_obj(f'translate_ep_vals_{arch}_{rnn}_plot_params')
+    plot_all_ep_vals(ep_val_dict, img_file_name='translate_{arch}_all_ep_vals_default_vs_tuned.png')
 
-def plot_method_comparisson_0():
+def plot_method_comparisson_0(arch = 's2s', rnn='GRU', default=True):
     ep_val_dict = {}
-    ep_val_dict['no_dropout'] = load_obj('translate_ep_vals_s2s_GRU_all_drop_0')
-    ep_val_dict['tuned'] = load_obj('translate_ep_vals_s2s')
-    plot_all_ep_train_val(ep_val_dict, img_file_name='translate_s2s_all_ep_vals_tuned_vs_all_drop_0.png')
+    ep_val_dict['no_dropout'] = load_obj(f'translate_ep_vals_{arch}_{rnn}_all_drop_0')
+    if default:
+        ep_val_dict['default'] = load_obj(f'translate_ep_vals_{arch}')
+        file_indicator = 'default'
+    else:
+        ep_val_dict['tuned'] = load_obj(f'translate_ep_vals_{arch}_{rnn}_plot_params')
+        file_indicator = 'tuned'
+    plot_all_ep_train_val(ep_val_dict, img_file_name=f'translate_{arch}_all_ep_vals_{file_indicator}_vs_all_drop_0.png')
 
 def plot_default_params():
     ep_val_dict = {}
@@ -118,18 +150,20 @@ def plot_default_params():
     ep_val_dict['all'] = load_obj('translate_ep_vals_all')
     plot_all_ep_vals(ep_val_dict, img_file_name= 'translate_all_ep_vals_default.png')
 
-def plot_all_in_range(drop_acron, range_strt, range_stop, arch):
+def plot_all_in_range(drop_acron, range_strt, range_stop, arch, perplex=False):
     ep_val_dict = {}
     for i in range(range_strt, range_stop):
         pt_txt = str(i/10)
         ep_val_dict[f'{drop_acron}_{pt_txt}'] = load_obj(f'translate_ep_vals_{arch}_{drop_acron}_{i}')
-    plot_all_ep_vals(ep_val_dict, img_file_name=f'translate_{arch}_{drop_acron}_{range_strt}-{range_stop}.png')
+    img_file_name = f'translate_{arch}_{drop_acron}_{range_strt}-{range_stop}.png'
+    #plot_all_grad_ep_vals(ep_val_dict, img_file_name)
+    plot_all_ep_vals(ep_val_dict, img_file_name, perplex)
 
-def batch_val_plots(arch='attn'):
+def batch_val_plots(arch='attn', perplex=False):
     range_strt=1
-    range_stop=6
+    range_stop=10
     for acron in ['eed', 'od', 'rdd', 'red']:
-        plot_all_in_range(acron, range_strt, range_stop, arch)
+        plot_all_in_range(acron, range_strt, range_stop, arch, perplex)
 
 def batch_final_val_plots(file_base, arch_type):
     range_strt=1
@@ -170,20 +204,35 @@ def temp_batch_val_plots(arch='attn'):
     #run not finished, temp plots
     #TODO set range stop to 10
     range_strt=1
-    range_stop=9
-    for acron in ['eed', 'rdd', 'red']:
+    range_stop=10
+    for acron in ['eed', 'od', 'rdd', 'red']:
         plot_all_in_range(acron, range_strt, range_stop, arch)
 
 def workflow():
     start = timer()
     #plot_default_params()
-    #plot_method_comparisson()
-    #plot_method_comparisson_0()
+    #TODO, find best params then create a trained
+    #plot_method_comparisson(arch = 's2s', rnn='GRU')
+
+    #compare to no dropout, already gen (TODO s2s tuned)
+    #plot_method_comparisson_0(arch = 's2s', rnn='GRU', default=True)
+    #plot_method_comparisson_0(arch='attn', rnn='GRU', default=True)
+    #plot_method_comparisson_0(arch='attn', rnn='GRU', default=False)
+
+    #have already generated these
     #batch_val_plots('attn')
-    temp_batch_val_plots(arch = 's2s_GRU_all_drop_0')
+    #temp_batch_val_plots(arch = 's2s_GRU')
+
+    #run 1-10 and 1-6
+    #batch_val_plots(arch='attn_GRU_all_drop_0', perplex=False)
+    batch_val_plots(arch = 's2s_GRU_all_drop_0')
+
     #batch_final_val_plots('translate_ep_vals_attn', arch_type='attn')
+
+
     #batch_seq2seq_val_plots()
     #batch_final_val_plots('translate_ep_vals_s2s_GRU', arch_type='s2s')
+
     end = timer()
     elapsed = end - start
     print(f'>>workflow() took {elapsed}sec')
