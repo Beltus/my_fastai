@@ -280,8 +280,6 @@ def create_emb(vecs, itos, em_sz):
 
 
 class Seq2SeqRNNAWD(nn.Module):
-    # fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99,
-    # rnn_type = rnn_type, rnn_enc_drop = rnn_enc_drop, rnn_dec_drop = rnn_dec_drop, emb_enc_drop = emb_enc_drop, out_drop = out_drop
     def __init__(self, vecs_enc, itos_enc, em_sz_enc, vecs_dec, itos_dec, em_sz_dec, nh, out_sl, nl=2,
                  rnn_type='GRU', rnn_enc_drop=0.25, rnn_dec_drop=0.1, emb_enc_drop=0.15, out_drop=0.35):
         super().__init__()
@@ -290,7 +288,8 @@ class Seq2SeqRNNAWD(nn.Module):
         self.nl, self.nh, self.out_sl = nl, nh, out_sl
         #ntoken, emb_sz, nhid, nlayers, pad_token, bidir=False,
         #dropouth=0.3, dropouti=0.65, dropoute=0.1, wdrop=0.5
-        self.rnn_enc = RNN_Encoder(ntoken, em_sz_enc, nh, num_layers=nl, pad_token, dropout=rnn_enc_drop)
+        #TODO check ntoken, pad_token are correct
+        self.rnn_enc = RNN_Encoder(ntoken=vecs_enc, em_sz_enc=em_sz_enc, nh=nh, num_layers=nl, pad_token=1, dropout=rnn_enc_drop)
         self.out_enc = nn.Linear(nh, em_sz_dec, bias=False)
         self.emb_dec = create_emb(vecs_dec, itos_dec, em_sz_dec)
         self.rnn_dec = nn.GRU(em_sz_dec, em_sz_dec, num_layers=nl, dropout=rnn_dec_drop)
@@ -355,6 +354,7 @@ class Seq2SeqRNN(nn.Module):
         sl,bs = inp.size()
         h = self.initHidden(bs)
         emb = self.emb_enc_drop(self.emb_enc(inp))
+        #uses a hook to call .forward(input, hx) on the rnn, where emb = [torch.cuda.FloatTensor of size 35x200x300], h = [torch.cuda.FloatTensor of size 3x200x256]
         enc_out, h = self.rnn_enc(emb, h)
         h = self.out_enc(h)
 

@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 # python -m spacy download en
 
 
-PATH='/mnt/samsung_1tb/Data/fastai/imdb/aclImdb/'
+PATH=Path('../..')/'data/imdb/lesson4/aclImdb/'
 
 TRN_PATH = 'train/all/'
 VAL_PATH = 'test/all/'
@@ -122,7 +122,7 @@ def get_reviews():
     #get_ipython().system("find {VAL} -name '*.txt' | xargs cat | wc -w")
     return reviews
 
-def create_model(reviews):
+def create_model_data(reviews):
     logger.debug('>>create_model()')
     # Before we can analyze text, we must first *tokenize* it. This refers to the process of splitting a sentence into an array of words (or more generally, into an array of *tokens*).
 
@@ -183,8 +183,8 @@ def numericalize_words(md, TEXT):
     logger.debug(next(iter(md.trn_dl)))
     return md, TEXT
 
-def training(md):
-    logger.debug('>>training()')
+def create_learner(md):
+    logger.debug('>>create_learner()')
     # ### Train
 
     # Researchers have found that large amounts of *momentum* (which we'll learn about later) don't work well with these kinds of *RNN* models, so we create a version of the *Adam* optimizer with less momentum than it's default of `0.9`.
@@ -354,9 +354,9 @@ def sentiment(encoder):
 def workflow():
     start = time.time()
     reviews = get_reviews()
-    md, TEXT = create_model(reviews)
+    md, TEXT = create_model_data(reviews)
     md, TEXT = numericalize_words(md, TEXT)
-    learner, opt_fn = training(md)
+    learner, opt_fn = create_learner(md)
 
     #fit_model(learner)
     #refit_model_10(learner)

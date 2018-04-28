@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# #### Testing on subset of imdb data
+# #### Testing on subsets of imdb data
 
 from timeit import default_timer as timer
 import html
@@ -59,6 +59,14 @@ wd = 1e-7
 # grab 70 at a time
 bptt = 70
 #bs = 52
+
+def save_obj(obj, name ):
+    with open('data_tests/'+ name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+def load_obj(path, name ):
+    with open(path + name + '.pkl', 'rb') as f:
+        return pickle.load(f)
 
 def get_texts(path):
     texts,labels = [],[]
@@ -219,7 +227,7 @@ def get_lookups(data_subset_frac):
     itos = pickle.load(open(str(LM_PATH)+'/tmp/itos'+'_' + str(data_subset_frac)+'.pkl', 'rb'))
     return trn_lm, val_lm, itos
 
-def wikitext103_conversion(itos, trn_lm, data_subset_frac):
+def wikitext103_conversion(itos, trn_lm, data_subset_frac, save_wgts=True):
     print('>>wikitext103_conversion()')
     VOCAB_SIZE = len(itos)
     VOCAB_SIZE, len(trn_lm)
@@ -249,7 +257,9 @@ def wikitext103_conversion(itos, trn_lm, data_subset_frac):
     wgts['0.encoder_with_dropout.embed.weight'] = T(np.copy(new_wgts))
     #decoder uses same weights
     wgts['1.decoder.weight'] = T(np.copy(new_wgts))
-    pickle.dump(wgts, open(str(PRE_PATH)+'/wgts_wt103'+'_' + str(data_subset_frac)+'.pkl','wb'))
+    if save_wgts:
+        pickle.dump(wgts, open(str(PRE_PATH)+'/wgts_wt103'+'_' + str(data_subset_frac)+'.pkl','wb'))
+    print(f'wgts.keys: {wgts.keys()}')
     return wgts
 
 
@@ -259,8 +269,8 @@ def language_model(trn_lm, val_lm, vocab_size, bs=52):
 
     trn_dl = LanguageModelLoader(np.concatenate(trn_lm), bs, bptt)
     val_dl = LanguageModelLoader(np.concatenate(val_lm), bs, bptt)
-
-    model_data = LanguageModelData(PATH, pad_idx=1, nt=vocab_size, trn_dl=trn_dl, val_dl=val_dl, bs=bs, bptt=bptt)
+    #path, pad_idx, n_tok, trn_dl, val_dl, test_dl=None, bptt=70
+    model_data = LanguageModelData(PATH, pad_idx=1, n_tok=vocab_size, trn_dl=trn_dl, val_dl=val_dl, bs=bs, bptt=bptt)
     return model_data
 
 def drops_sensitivity_final_layer(model_data, wgts, data_subset_frac):
@@ -296,21 +306,26 @@ def plot_tuple_dict(d, run):
 
 
 
-def fit_final_layer(model_data, drops_scalar, wgts, data_subset_frac, use_pt_wgts=True):
+def fit_final_layer(model_data, drops_scalar, wgts, data_subset_frac, run_id='', dropouti=0.25, dropout=0.1, wdrop=0.2,
+                    dropoute=0.02, dropouth=0.15, use_pt_wgts=True):
     print('>>fit_final_layer() drops_scalar: {0}'.format(drops_scalar))
     assert drops_scalar >= 0.1
     assert drops_scalar<=1.0
-    drops = np.array([0.25, 0.1, 0.2, 0.02, 0.15])*drops_scalar
+    drops = np.array([dropouti, dropout, wdrop, dropoute, dropouth])*drops_scalar
 
-    kwargs = {'dropouti': drops[0], 'dropout': drops[1], 'wdrop': drops[2], 'dropoute': drops[3], 'dropouth': drops[4]}
+    kwargs = {'dropouti': dropouti, 'dropout': dropout, 'wdrop': wdrop, 'dropoute': dropoute, 'dropouth': dropouth}
 
     #returns a RNN_Learner with model ~ SequentialRNN(RNN_Encoder(...), LinearDecoder(...))
     learner = model_data.get_model(opt_fn = opt_fn, emb_sz = EMBEDDING_SIZE, n_hid = n_hid, n_layers = n_layers, **kwargs)
 
     learner.metrics = [accuracy]
-    learner.unfreeze
+    learner.unfreeze()
 
     if use_pt_wgts:
+        #get current state of model
+        destination = learner.model.state_dict()
+        print(f'model keys: {destination.keys()}')
+        print(f'wgts keys: {wgts.keys()}')
         learner.model.load_state_dict(wgts)
 
     lr=1e-3
@@ -319,12 +334,12 @@ def fit_final_layer(model_data, drops_scalar, wgts, data_subset_frac, use_pt_wgt
     start = timer()
     #getting torch.backends.cudnn.CuDNNError: 8: b'CUDNN_STATUS_EXECUTION_FAILED' here
     #when going dropout parameter testing
-    vals = learner.fit(lrs/2, 1, wds=wd, use_clr=(32,2), cycle_len=1)
+    vals, ep_vals = learner.fit(lrs/2, 1, wds=wd, use_clr=(32,2), cycle_len=1, get_ep_vals=True)
     end = timer()
     print(f'elapsed: {end - start}')
     print(f'{vals}',flush=True)
-    learner.save('lm_last_fit'+'_' + str(data_subset_frac))
-    return vals, learner, lrs
+    learner.save('lm_last_fit'+'_' + str(data_subset_frac)+'_'+str(run_id))
+    return vals, ep_vals, learner, lrs
 
 def train_full_model_fast(learner, lrs, data_subset_frac):
     print('>>train_full_model()')
@@ -340,38 +355,33 @@ def train_full_model_fast(learner, lrs, data_subset_frac):
     return vals
 
 
-def train_full_model(learner, lrs, data_subset_frac):
+def train_full_model(learner, lrs, data_subset_frac, run_id=''):
     print('>>train_full_model()')
     learner.load('lm_last_fit'+'_' + str(data_subset_frac))
 
     learner.unfreeze()
 
-    start = timer()
-    learner.lr_find(start_lr=lrs/10, end_lr=lrs*10, linear=True)
-    end = timer()
-    print(f'elapsed: {end - start}')
+    #start = timer()
+    #learner.lr_find(start_lr=lrs/10, end_lr=lrs*10, linear=True)
+    #end = timer()
+    #print(f'elapsed: {end - start}')
 
-    learner.sched.plot()
+    #learner.sched.plot()
     #plt.show()
 
     start = timer()
-    learner.fit(lrs, 1, wds=wd, use_clr=(20,10), cycle_len=15)
+    vals, ep_vals = learner.fit(lrs, 1, wds=wd, use_clr=(20,10), cycle_len=12)
     end = timer()
     print(f'elapsed: {end - start}')
 
-    learner.save('lm1'+'_' + str(data_subset_frac))
-    learner.save_encoder('lm1_enc'+'_' + str(data_subset_frac))
+    learner.save('lm1'+'_' + str(data_subset_frac)+'_' + str(run_id))
+    learner.save_encoder('lm1_enc'+'_' + str(data_subset_frac)+'_' + str(run_id))
 
-    learner.sched.plot_loss()
+    #learner.sched.plot_loss()
     #plt.show()
+    return vals, ep_vals
 
-def save_obj(obj, name ):
-    with open('data_tests/'+ name + '.pkl', 'wb') as f:
-        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
-def load_obj(name ):
-    with open('data_tests/' + name + '.pkl', 'rb') as f:
-        return pickle.load(f)
 
 def classifier_tokens(data_subset_frac):
     # ## Classifier Tokens
@@ -517,6 +527,8 @@ def test_dropout_stability():
         name_1 = 'drops_sens_final_layer_acc_{0}_{1}_runs.png'.format(DATA_SUBSET, runs)
         plot_multi_lines(x_list, y1_list, runs, name_1)
 
+
+
 def test_data_subset_sensitivity(drops_scalar=0.7, use_pt_wgts=True):
     data_sz_list = [200, 100, 50, 25, 10, 2, 1]
     val_dict = {}
@@ -579,15 +591,25 @@ def test_bs_sensitivity(drops_scalar=0.7):
     save_obj(val_dict, 'data_subset_sens_last_bs')
     save_obj(val_dict, 'data_subset_sens_full_3_epoch_bs')
 
+def qc_wiki_wts():
+    PRE_PATH = PATH/'models'/'wt103'
+    all_keys = {}
+    for i in reversed([1,2,5,10,25,50,100,200,500]):
+        wgts = load_obj(f'{PRE_PATH}/', f'wgts_wt103_{i}')
+        all_keys[f'wgts_wt103_{i}']=wgts.keys
+        print(f'wgts_wt103_{i} keys: {wgts.keys()}')
+    save_obj(all_keys, 'wgts_wt103_all_keys')
+
 
 def workflow():
     start = timer()
     #only need to run these once
     #trn_texts, val_texts, col_names = create_class_files()
     #create_train_test_files(trn_texts, val_texts, col_names)
-    data_subset_frac = 100
-    tok_trn, tok_val = create_tokens(data_subset_frac=data_subset_frac)
-    create_token_lookups(tok_trn, tok_val,data_subset_frac=data_subset_frac)
+    data_subset_frac = 1
+    #tok_trn, tok_val = create_tokens(data_subset_frac=data_subset_frac)
+    #create_token_lookups(tok_trn, tok_val,data_subset_frac=data_subset_frac)
+    '''
     trn_lm, val_lm, itos = get_lookups(data_subset_frac=data_subset_frac)
     vocab_size = len(itos)
     wgts = wikitext103_conversion(itos, trn_lm, data_subset_frac=data_subset_frac)
@@ -597,15 +619,21 @@ def workflow():
     train_full_model(learner, lrs, data_subset_frac=data_subset_frac)
     classifier_tokens(data_subset_frac=data_subset_frac)
     classifier(itos, data_subset_frac=data_subset_frac)
+    '''
 
     # data subset workflow
     #test_data_subset_sensitivity(drops_scalar=0.7, use_pt_wgts=False)
 
-    #dropout_stability workflow
+    #dropout scalar workflow
     #test_dropout_stability()
+
+    #NB during parameter testing model state was different to wiki wgts, debug why
 
     # batch size workflow
     #test_bs_sensitivity()
+
+
+    qc_wiki_wts()
 
     end = timer()
     elapsed = end - start
