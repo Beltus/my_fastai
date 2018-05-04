@@ -2,6 +2,9 @@ from timeit import default_timer as timer
 
 import matplotlib.pylab as plt
 from matplotlib.pyplot import cm
+import matplotlib.ticker as ticker
+from matplotlib.ticker import MultipleLocator, NullFormatter
+
 
 from fastai.text import *
 
@@ -41,7 +44,7 @@ def box_plot_final_val(title, final_val_dict, img_file_name):
     for patch, color in zip(bplot['boxes'], colors):
             patch.set_facecolor(color)
 
-    plt.savefig('../img/' + img_file_name)
+    plt.savefig('../data_img/' + img_file_name)
     plt.close()
 
 def scatter_plot_final_val(title, final_val_dict, img_file_name):
@@ -58,7 +61,7 @@ def scatter_plot_final_val(title, final_val_dict, img_file_name):
     plt.ylabel("val_loss")
     plt.xlabel("dropout scalar")
     plt.legend(loc='upper left')
-    plt.savefig('../img/' + img_file_name)
+    plt.savefig('../data_img/' + img_file_name)
     plt.close()
 
 def plot_all_grad_ep_vals(ep_val_dict, img_file_name):
@@ -74,12 +77,13 @@ def plot_all_grad_ep_vals(ep_val_dict, img_file_name):
         plt.ylabel("val_loss_1st_derivative")
         #plt.yscale('log')
     plt.legend(loc='upper left')
-    plt.savefig('../img/1vd_'+img_file_name)
+    plt.savefig('../data_img/1vd_'+img_file_name)
     plt.close()
 
 
 def plot_all_ep_vals(ep_val_dict, img_file_name, perplex=False):
-
+    ymin =0.9
+    ymax = 4.5
     plt.xlabel("epoch")
     color=iter(cm.rainbow(np.linspace(0,1,len(ep_val_dict))))
     for k, v in ep_val_dict.items():
@@ -97,10 +101,21 @@ def plot_all_ep_vals(ep_val_dict, img_file_name, perplex=False):
     if perplex:
         plt.ylabel("val_perplexity")
     else:
-        plt.ylabel("val_loss")
-        plt.yscale('log')
-    plt.legend(loc='upper left')
-    plt.savefig('../img/'+img_file_name)
+        plt.ylabel("log10(val_loss)")
+        plt.yscale('log', basey=10)
+
+    axes = plt.gca()
+    axes.set_ylim([ymin, ymax])
+    fmt = matplotlib.ticker.ScalarFormatter(useOffset=False)
+    fmt.set_scientific(False)
+    axes.yaxis.set_major_formatter(fmt)
+    #ml = MultipleLocator(0.1)
+    #axes.yaxis.set_minor_locator(ml)
+    #axes.yaxis.set_tick_params(which='minor', right='off')
+    #axes.set_yticks([0.9, 1.1, 1.2, 1.3, 1.4, 1.5], minor=True)
+    plt.tight_layout()
+    plt.legend(loc='upper right', ncol=4)
+    plt.savefig('../data_img/'+img_file_name)
     plt.close()
 
 def plot_all_ep_train_val(ep_val_dict, img_file_name):
@@ -120,14 +135,17 @@ def plot_all_ep_train_val(ep_val_dict, img_file_name):
 
     plt.yscale('log')
     plt.legend(loc='upper left')
-    plt.savefig('../img/'+img_file_name)
+    plt.savefig('../data_img/'+img_file_name)
     plt.close()
 
-def plot_all_in_range(prefix, drop_acron, range_strt, range_stop, arch, perplex=False):
+def plot_all_in_range(prefix, drop_acron, range_strt, range_stop, arch, perplex=False, i_scalar=1):
     ep_val_dict = {}
     for i in range(range_strt, range_stop):
         pt_txt = str(i/10)
-        ep_val_dict[f'{drop_acron}_{pt_txt}'] = load_obj(f'{prefix}_ep_vals_{arch}_{drop_acron}_{i}')
+        if i_scalar!=1:
+            ep_val_dict[f'{drop_acron}_{pt_txt}'] = load_obj(f'{prefix}_ep_vals_{arch}_{drop_acron}_{i/i_scalar}')
+        else:
+            ep_val_dict[f'{drop_acron}_{pt_txt}'] = load_obj(f'{prefix}_ep_vals_{arch}_{drop_acron}_{i}')
     img_file_name = f'{prefix}_{arch}_{drop_acron}_{range_strt}-{range_stop}.png'
     #plot_all_grad_ep_vals(ep_val_dict, img_file_name)
     plot_all_ep_vals(ep_val_dict, img_file_name, perplex)

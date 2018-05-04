@@ -15,3 +15,4 @@ data_large
 dl1/notes/lesson6-rnn_notes\.pdf
 fastai
 /.project
+/.pydevproject

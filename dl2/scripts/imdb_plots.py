@@ -4,7 +4,7 @@ import matplotlib.pylab as plt
 
 from fastai.text import *
 
-from plot_functions import plot_all_ep_vals, plot_all_ep_train_val, \
+from dl2.scripts.plot_functions import plot_all_ep_vals, plot_all_ep_train_val, \
     load_obj, scatter_plot_final_val, box_plot_final_val, plot_all_in_range, plot_all_in_range_decimal
 
 
@@ -34,10 +34,20 @@ def data_subset_sens_full_3():
     print (data_dict)
 
 def batch_val_plots(arch='attn', perplex=False):
+    '''for imdb_ep_vals_full_di_d_de_dh_drop_0_dw_0pt001 use these values'''
     range_strt = 5
     range_stop = 30
     for acron in ['di']:
         plot_all_in_range_decimal(arch, acron, range_strt, range_stop, arch, perplex)
+
+def batch_val_plots_dec(arch, perplex=False):
+    range_strt=1
+    range_stop=10
+    #plot_all_in_range(prefix, drop_acron, range_strt, range_stop, arch, perplex=False)
+    #load_obj(f'{prefix}_ep_vals_{arch}_{drop_acron}_{i}')
+    #for acron in ['d', 'de', 'dh', 'wd']:
+    for acron in ['de']:
+        plot_all_in_range('wikitext2', drop_acron=acron, range_strt=range_strt, range_stop=range_stop, arch=arch, perplex=False, i_scalar=10)
 
 def batch_final_val_plots(file_base, arch_type):
     range_strt=5
@@ -68,7 +78,8 @@ def batch_final_val_plots(file_base, arch_type):
 def workflow():
     start = timer()
     #batch_final_val_plots('imdb_ep_vals_full_di_d_de_dh_drop_0_dw_0pt001', 'full')
-    batch_val_plots('imdb_ep_vals_full_di_d_de_dh_drop_0_dw_0pt001')
+    #batch_val_plots('imdb_ep_vals_full_di_d_de_dh_drop_0_dw_0pt001')
+    batch_val_plots_dec('full_di_d_de_dh_drop_0_dw_0.001')
     end = timer()
     elapsed = end - start
     print(f'>>workflow() took {elapsed}sec')
