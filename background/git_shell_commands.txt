@@ -15,3 +15,6 @@ git reset --hard origin/master
 #flush gpu memory
 sudo fuser -v /dev/nvidia*
 sudo kill -9 PID
+
+#copy for pycharm
+rsync -avz --exclude ".git" --exclude ".idea" --exclude "data_tests" --delete "/mnt/963GB/Data/Python/Courses/fastai/my_fastai/" "/mnt/963GB/Data/Python/Courses/fastai/pycharm_fastai/"
