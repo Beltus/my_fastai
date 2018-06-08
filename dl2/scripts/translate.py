@@ -796,6 +796,12 @@ def seq2seq_param_sens(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_e
                                     nl, rnn_type, rnn_enc_drop, rnn_dec_drop, emb_enc_drop, out_drop)
         run_seq2seq_learn_fit(learn, run_id=run_id, lr=3e-3)
 
+    #reset params
+    rnn_enc_drop = 0.25
+    rnn_dec_drop = 0.1
+    emb_enc_drop = 0.15
+    out_drop = 0.35
+
     for i in range(range_strt, range_stop):
         run_id = rnn_type+'_rdd_'+str(i)
         rnn_dec_drop = i/10
@@ -803,12 +809,24 @@ def seq2seq_param_sens(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_e
                                     nl, rnn_type, rnn_enc_drop, rnn_dec_drop, emb_enc_drop, out_drop)
         run_seq2seq_learn_fit(learn, run_id=run_id, lr=3e-3)
 
+    #reset params
+    rnn_enc_drop = 0.25
+    rnn_dec_drop = 0.1
+    emb_enc_drop = 0.15
+    out_drop = 0.35
+
     for i in range(range_strt, range_stop):
         run_id = rnn_type+'_eed_'+str(i)
         emb_enc_drop = i/10
         learn = run_seq2seq_learner(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99,
                                     nl, rnn_type, rnn_enc_drop, rnn_dec_drop, emb_enc_drop, out_drop)
         run_seq2seq_learn_fit(learn, run_id=run_id, lr=3e-3)
+
+    #reset params
+    rnn_enc_drop = 0.25
+    rnn_dec_drop = 0.1
+    emb_enc_drop = 0.15
+    out_drop = 0.35
 
     for i in range(range_strt, range_stop):
         run_id = rnn_type+'_od_'+str(i)
@@ -830,11 +848,23 @@ def attn_param_sens(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_v
         run_attn_learn_fit(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99,
                            nl, rnn_type, rnn_enc_drop, rnn_dec_drop, emb_enc_drop, out_drop, run_id, lr=2e-3)
 
+    #reset
+    rnn_enc_drop = 0.25
+    rnn_dec_drop = 0.1
+    emb_enc_drop = 0.15
+    out_drop = 0.35
+
     for i in range(range_strt, range_stop):
         run_id = rnn_type + '_rdd_'+str(i)
         rnn_dec_drop = i/10
         run_attn_learn_fit(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99,
                            nl, rnn_type, rnn_enc_drop, rnn_dec_drop, emb_enc_drop, out_drop, run_id, lr=2e-3)
+
+    #reset
+    rnn_enc_drop = 0.25
+    rnn_dec_drop = 0.1
+    emb_enc_drop = 0.15
+    out_drop = 0.35
 
     for i in range(range_strt, range_stop):
         run_id = rnn_type+'_eed_'+str(i)
@@ -842,11 +872,19 @@ def attn_param_sens(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_v
         run_attn_learn_fit(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99,
                            nl, rnn_type, rnn_enc_drop, rnn_dec_drop, emb_enc_drop, out_drop, run_id, lr=2e-3)
 
+    #reset
+    rnn_enc_drop = 0.25
+    rnn_dec_drop = 0.1
+    emb_enc_drop = 0.15
+    out_drop = 0.35
+
     for i in range(range_strt, range_stop):
         run_id = rnn_type+'_od_'+str(i)
         out_drop = i/10
         run_attn_learn_fit(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99,
                            nl, rnn_type, rnn_enc_drop, rnn_dec_drop, emb_enc_drop, out_drop, run_id, lr=2e-3)
+
+
 
 def run_attn(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99,
                         nl=2, rnn_type='GRU', rnn_enc_drop=0.25, rnn_dec_drop=0.1, emb_enc_drop=0.15, out_drop=0.35):
@@ -868,7 +906,7 @@ def run_attn_drop_0(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_v
     rnn_dec_drop = 0
     emb_enc_drop = 0
     out_drop = 0
-    range_strt = 9
+    range_strt = 1
     range_stop = 10
 
     #output prefix: 'translate_ep_vals_attn'
@@ -882,6 +920,10 @@ def run_attn_drop_0(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_v
 
     for drop in ['red', 'rdd', 'eed', 'od']:
         for i in range(range_strt, range_stop):
+            rnn_enc_drop = 0
+            rnn_dec_drop = 0
+            emb_enc_drop = 0
+            out_drop = 0
             run_id = rnn_type + f'_all_drop_0_{drop}_{i}'
             drop_val = i / 10
             if drop == 'red':
@@ -907,7 +949,8 @@ def run_s2s_drop_0(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_ve
     range_strt=9
     range_stop=10
 
-    for nl in [3, 4]:
+    #for nl in [2, 3, 4]:
+    for nl in [2]:
         run_id = f'GRU_nl_{nl}_all_drop_0'
 
         #Base run all dropouts zero
@@ -919,6 +962,11 @@ def run_s2s_drop_0(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_ve
 
         for drop in ['red', 'rdd', 'eed', 'od']:
             for i in range(range_strt, range_stop):
+                #reset for each run
+                rnn_enc_drop = 0
+                rnn_dec_drop = 0
+                emb_enc_drop = 0
+                out_drop = 0
                 run_id = rnn_type + f'_nl_{nl}_all_drop_0_{drop}_{i}'
                 drop_val = i / 10
                 if drop == 'red':
@@ -947,20 +995,20 @@ def workflow():
     trn_dl, val_dl, md = create_dataloaders(trn_ds, val_ds, trn_samp, val_samp)
 
     run_s2s_drop_0(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99)
-    #run_attn_drop_0(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99)
+    range_strt = 1
+    range_stop=10
+    seq2seq_param_sens(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99, range_strt,
+                       range_stop, rnn_type = 'GRU')
+    run_attn_drop_0(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99)
+    #NB when use LSTM get a RuntimeError: Expected hidden[0] size (2, 200, 256), got (200, 256)
+    attn_param_sens(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99, range_strt, range_stop)
     
     '''
     run_attn(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99)
 
-    
-    range_strt = 1
-    range_stop=10
 
-    #NB when use LSTM get a RuntimeError: Expected hidden[0] size (2, 200, 256), got (200, 256)
-    #attn_param_sens(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99, range_strt, range_stop, rnn_type = 'LSTM')
 
-    seq2seq_param_sens(md, fr_vecd, fr_itos, dim_fr_vec, en_vecd, en_itos, dim_en_vec, nh, enlen_99, range_strt,
-                       range_stop, rnn_type = 'GRU')
+
 
     '''
     end = timer()

@@ -77,13 +77,14 @@ def plot_all_grad_ep_vals(ep_val_dict, img_file_name):
         plt.ylabel("val_loss_1st_derivative")
         #plt.yscale('log')
     plt.legend(loc='upper left')
-    plt.savefig('../data_img/1vd_'+img_file_name)
+    plt.savefig('../data_img/1vd_'+img_file_name+'.png')
+    plt.savefig('../data_img/1vd_'+img_file_name+'.eps', format='eps', dpi=1000)
     plt.close()
 
 
 def plot_all_ep_vals(ep_val_dict, img_file_name, perplex=False):
     ymin =0.9
-    ymax = 4.5
+    ymax = 2.0
     plt.xlabel("epoch")
     color=iter(cm.rainbow(np.linspace(0,1,len(ep_val_dict))))
     for k, v in ep_val_dict.items():
@@ -112,7 +113,7 @@ def plot_all_ep_vals(ep_val_dict, img_file_name, perplex=False):
     #ml = MultipleLocator(0.1)
     #axes.yaxis.set_minor_locator(ml)
     #axes.yaxis.set_tick_params(which='minor', right='off')
-    #axes.set_yticks([0.9, 1.1, 1.2, 1.3, 1.4, 1.5], minor=True)
+    axes.set_yticks([0.9, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9], minor=True)
     plt.tight_layout()
     plt.legend(loc='upper right', ncol=4)
     plt.savefig('../data_img/'+img_file_name)

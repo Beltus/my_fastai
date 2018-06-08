@@ -15,10 +15,14 @@ from fastai.text import *
 BOS = 'xbos'  # beginning-of-sentence tag
 FLD = 'xfld'  # data field tag
 
+#PATH=Path('../..')/'data/lm/models/wikitext-103/'
 PATH=Path('../..')/'data/lm/models/wikitext-2/'
+#PATH=Path('../..')/'data/lm/models/penn/'
 PATH_TMP = PATH/'tmp'
 
+#LM_PATH=Path('../..')/'data/lm/models/wikitext-103/'
 LM_PATH=Path('../..')/'data/lm/models/wikitext-2/'
+#LM_PATH=Path('../..')/'data/lm/models/penn/'
 LM_PATH.mkdir(exist_ok=True)
 LM_PATH_TMP = LM_PATH/'tmp'
 
@@ -36,7 +40,9 @@ bs=52
 opt_fn = partial(optim.Adam, betas=(0.8, 0.99))
 
 re1 = re.compile(r'  +')
+#lang_mdl = 'penn'
 lang_mdl = 'wikitext2'
+#lang_mdl = 'wikitext-103'
 
 def save_obj(obj, name ):
     with open('../data_tests/'+ name + '.pkl', 'wb') as f:
@@ -245,6 +251,7 @@ def train_full_model_vanilla(learner, lrs, lang_mdl, run_id='', cycle_len=12, us
     save_obj(ep_vals, f'{lang_mdl}_ep_vals_full_{run_id}')
 
 def test_dropout_parameters():
+    #all other dropout params set to 0
     #run through this nx, look at variation over runs
     trn_lm, val_lm, itos = get_lookups()
     #wgts = pretrained_conversion(itos, trn_lm, save_wgts=False)
@@ -286,6 +293,49 @@ def test_dropout_parameters():
                 learner, lrs = create_learner(md, run_id=run_id, dropouti=dropouti, dropout=dropout, wdrop=wdrop, dropoute=dropoute, dropouth=dropouth, use_pt_wgts=True)
                 train_full_model(learner, lrs, run_id, cycle_len=12, use_clr_beta=False)
 
+def best_dropout_parameters():
+    #all other dropouts set to best value found using test_dropout_parameters()
+    #run through this nx, look at variation over runs
+    trn_lm, val_lm, itos = get_lookups()
+    #wgts = pretrained_conversion(itos, trn_lm, save_wgts=False)
+
+    vocab_size = len(itos)
+
+    md = language_model(trn_lm, val_lm, vocab_size)
+
+    drops_scalar = 1.0
+    range_strt = 6
+    range_stop = 10
+    for drop_base in [0.001, 0.01, 0.02, 0.05, 0.1, 0.5]:
+        #NB in some runs ran with di, d, de, dh set to 0 below instead of using test_dropout_parameters()
+        prefix = f'di_0.2_d_0.7_de_0.1_dh_0.3_dw_{str(drop_base)}'
+        #for drop in ['d', 'wd', 'de', 'dh', 'di']:
+        for drop in ['wd']:
+            dropouti = 0.2
+            dropout = 0.7
+            dropoute = 0.1
+            dropouth = 0.3
+            # Cant set this to zero
+            wdrop = drop_base
+            for i in range(range_strt, range_stop):
+                drop_val = i / 10
+                run_id = f'{prefix}_{drop}_{str(drop_val)}'
+                print(f'{run_id}')
+                if drop == 'di':
+                    dropouti = drop_val*drops_scalar
+                elif drop == 'd':
+                    dropout = drop_val*drops_scalar
+                elif drop == 'wd':
+                    wdrop = drop_val*drops_scalar
+                elif drop == 'de':
+                    dropoute = drop_val*drops_scalar
+                elif drop == 'dh':
+                    dropouth = drop_val*drops_scalar
+                #model_data, drops_scalar, wgts, data_subset_frac, run_id='', dropouti=0.25, dropout=0.1, wdrop=0.2, dropoute=0.02, dropouth=0.15, use_pt_wgts=True
+                learner, lrs = create_learner(md, run_id=run_id, dropouti=dropouti, dropout=dropout, wdrop=wdrop, dropoute=dropoute, dropouth=dropouth, use_pt_wgts=True)
+                train_full_model(learner, lrs, run_id, cycle_len=12, use_clr_beta=False)
+
+
 def clr_testing():
     trn_lm, val_lm, itos = get_lookups()
     #wgts = pretrained_conversion(itos, trn_lm, save_wgts=False)
@@ -320,7 +370,8 @@ def workflow():
     #trn_lm, val_lm, itos = get_lookups()
     #vocab_size = len(itos)
     #clr_testing()
-    test_dropout_parameters()
+    best_dropout_parameters()
+    #test_dropout_parameters()
     end = timer()
     elapsed = end - start
     print(f'>>workflow() took {elapsed}sec')
