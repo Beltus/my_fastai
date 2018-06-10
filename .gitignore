@@ -16,25 +16,32 @@ fastai
 /.project
 /.pydevproject
 
+dl2/.ipynb_checkpoints/*
+dl2/fastai/*
+
+dl2/img/*
+dl2/data_tests/*
+dl2/data_tests/xeon/
+dl2/data_img/*
+dl2/data_img/xeon/
+
+dl2/scripts/fastai/*
+dl2/scripts/.ipynb_checkpoints/*
+dl2/scripts/__pycache__/*
+
+
 #github
-/background/.ipynb_checkpoints/*
-/background/*.ipynb
-/background/*.py
-/background/*.txt
+background/.ipynb_checkpoints/*
+background/*.ipynb
+background/*.py
+background/*.txt
 
-/utils/*
-/ml/*
-/data/*
+utils/*
+ml/*
+data/*
 
-/dl2/.ipynb_checkpoints/*
-/dl2/fastai/*
-/dl2/temp.png
-/dl2/img/*
-/dl2/data_tests/*
-/dl2/data_img/*
 
-/dl2/scripts/fastai/*
-/dl2/scripts/.ipynb_checkpoints/*
-/dl2/scripts/__pycache__/*
-/dl2/scripts/sgugger_LM_wikitext.py
-/dl2/scripts/*.py
+dl2/temp.png
+
+dl2/scripts/sgugger_LM_wikitext.py
+dl2/scripts/*.py
