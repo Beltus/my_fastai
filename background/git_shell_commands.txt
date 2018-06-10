@@ -18,3 +18,22 @@ sudo kill -9 PID
 
 #copy for pycharm
 rsync -avz --exclude ".git" --exclude ".idea" --exclude "data_tests" --delete "/mnt/963GB/Data/Python/Courses/fastai/my_fastai/" "/mnt/963GB/Data/Python/Courses/fastai/pycharm_fastai/"
+
+#fastai data sync run from R6 (Xeon to R6)
+rsync -avrt --delete --rsh='ssh -p 4029' walle@192.168.2.196:/mnt/963GB/Data/Python/Courses/fastai/my_fastai/dl2/data_tests/
+/mnt/963GB/Data/Python/Courses/fastai/my_fastai/dl2/data_tests/xeon/
+
+#fastai img snc run from R6 (Xeon to R6)
+rsync -avrt --delete --rsh='ssh -p 4029' walle@192.168.2.196:/mnt/963GB/Data/Python/Courses/fastai/my_fastai/dl2/data_img/
+/mnt/963GB/Data/Python/Courses/fastai/my_fastai/dl2/data_img/xeon/
+
+#awdlstm data sync run from R6 (Xeon to R6)
+rsync -avrt --delete --rsh='ssh -p 4029' walle@192.168.2.196:/mnt/963GB/Data/Python/Code/pytorch/awd-lstm-lm/data_tests/
+/mnt/963GB/Data/Python/Code/pytorch/awd-lstm-lm/data_tests/xeon/
+
+#awdlstm img sync run from R6 (Xeon to R6)
+rsync -avrt --delete --rsh='ssh -p 4029' walle@192.168.2.196:/mnt/963GB/Data/Python/Code/pytorch/awd-lstm-lm/img/
+/mnt/963GB/Data/Python/Code/pytorch/awd-lstm-lm/img/xeon/
+
+#nvidia monitor in shell
+watch -n 1 nvidia-smi
