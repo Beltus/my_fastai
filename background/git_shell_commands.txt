@@ -37,3 +37,14 @@ rsync -avrt --delete --rsh='ssh -p 4029' walle@192.168.2.196:/mnt/963GB/Data/Pyt
 
 #nvidia monitor in shell
 watch -n 1 nvidia-smi
+
+#to remove files in .gitignore from github
+git rm -r --cached .
+git add .
+git commit -m 'Removed all files that are in the .gitignore'
+git push origin master
+
+#bitbucket
+git remote add origin https://Mathsonmars@bitbucket.org/Mathsonmars/my_fastai.git
+git push -u origin master
+
