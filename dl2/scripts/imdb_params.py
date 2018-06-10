@@ -434,6 +434,10 @@ def test_dropout_parameters():
         wdrop = drop_base
         prefix = f'di_d_de_dh_drop_0_dw_{str(drop_base)}'
         for drop in ['d', 'wd', 'de', 'dh', 'di']:
+            dropouti=0
+            dropout=0
+            dropoute=0
+            dropouth=0
             for i in range(range_strt, range_stop):
                 drop_val = i / 10
                 run_id = f'{prefix}_{drop}_{str(drop_val)}'
@@ -460,7 +464,7 @@ def clr_testing():
     drops_scalar = 1.0
     range_strt = 1
     range_stop = 10
-    prefix = 'all_drop_0'
+    prefix = 'clr_all_drop_0'
     dropouti=0
     dropout=0
     dropoute=0

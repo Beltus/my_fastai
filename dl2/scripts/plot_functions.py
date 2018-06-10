@@ -88,6 +88,24 @@ def plot_all_ep_vals(ep_val_dict, img_file_name, perplex=False):
     plt.xlabel("epoch")
     color=iter(cm.rainbow(np.linspace(0,1,len(ep_val_dict))))
     for k, v in ep_val_dict.items():
+        '''
+        d	od	output dropout
+        di	rdd	RNN decoder dropout
+        dh	red	RNN encoder dropout
+        de	eed	embedding encoder dropout
+        '''
+        k_lbl = k.split('_')[0]
+        val_lbl = k.split('_')[1]
+        if k_lbl=='od':
+            y_lbl = 'd'+'_'+val_lbl
+        elif k_lbl=='rdd':
+            y_lbl = 'di'+'_'+val_lbl
+        elif k_lbl=='red':
+            y_lbl = 'dh'+'_'+val_lbl
+        elif k_lbl=='eed':
+            y_lbl = 'de'+'_'+val_lbl
+        else:
+            y_lbl = k
         epochs = ep_val_dict[k].keys()
         plt.xticks(np.asarray(list(epochs)))
         val_losses = [item[1] for item in list(ep_val_dict[k].values())]
@@ -96,9 +114,9 @@ def plot_all_ep_vals(ep_val_dict, img_file_name, perplex=False):
             #convert loss to perplexity
             ey_np = np.exp(np.asarray(val_losses))
             ey_list = ey_np.tolist()
-            plt.plot(epochs, ey_list, c=c, label=k)
+            plt.plot(epochs, ey_list, c=c, label=y_lbl)
         else:
-            plt.plot(epochs, val_losses, c=c, label=k)
+            plt.plot(epochs, val_losses, c=c, label=y_lbl)
     if perplex:
         plt.ylabel("val_perplexity")
     else:

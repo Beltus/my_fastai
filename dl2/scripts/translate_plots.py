@@ -97,19 +97,18 @@ def workflow():
     #plot_method_comparisson_0(arch='attn', rnn='GRU', default=False)
 
     #have already generated these
-    #batch_val_plots('attn')
-    #temp_batch_val_plots(arch = 's2s_GRU')
+    batch_val_plots('attn_GRU')
+    batch_val_plots(arch = 's2s_GRU')
 
     #run 1-10 and 1-6
-    #batch_val_plots(arch='attn_GRU_all_drop_0', perplex=False)
-    batch_val_plots(arch = 's2s_GRU_all_drop_0')
+    batch_val_plots(arch='attn_GRU_all_drop_0', perplex=False)
+    batch_val_plots(arch = 's2s_GRU_nl_2_all_drop_0')
 
-    #batch_final_val_plots('translate_ep_vals_attn', arch_type='attn')
+    batch_final_val_plots('translate_ep_vals_attn_GRU', arch_type='attn')
 
 
     #batch_seq2seq_val_plots()
-    #batch_final_val_plots('translate_ep_vals_s2s_GRU', arch_type='s2s')
-
+    batch_final_val_plots('translate_ep_vals_s2s_GRU', arch_type='s2s')
     end = timer()
     elapsed = end - start
     print(f'>>workflow() took {elapsed}sec')
