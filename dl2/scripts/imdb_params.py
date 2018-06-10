@@ -424,7 +424,7 @@ def test_dropout_parameters():
     range_strt = 1
     range_stop = 10
     prefix = 'all_drop_0'
-    dropouti=0
+    dropouti= 0
     dropout=0
     dropoute=0
     dropouth=0
