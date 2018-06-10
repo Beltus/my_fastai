@@ -12,6 +12,12 @@ import matplotlib.pylab as plt
 
 from fastai.text import *
 
+#1080ti
+torch.cuda.set_device(0)
+#1080 on xeon
+#torch.cuda.set_device(1)
+torch.cuda.current_device()
+
 BOS = 'xbos'  # beginning-of-sentence tag
 FLD = 'xfld'  # data field tag
 

@@ -12,6 +12,12 @@ import matplotlib.pylab as plt
 
 from fastai.text import *
 
+#1080ti
+torch.cuda.set_device(0)
+#1080 on xeon
+#torch.cuda.set_device(1)
+torch.cuda.current_device()
+
 BOS = 'xbos'  # beginning-of-sentence tag
 FLD = 'xfld'  # data field tag
 
@@ -254,10 +260,11 @@ def fit_final_layer(md, wgts, run_id='', dropouti=0.25, dropout=0.1, wdrop=0.2,
     return learner, lrs
 
 
-def train_full_model(learner, lrs, run_id='', cycle_len=12, use_clr_beta=True):
+def train_full_model(learner, lrs, run_id='', cycle_len=12, use_clr_beta=True, use_last_pt=False):
     print('>>train_full_model')
 
-    learner.load('lm_last_fit'+'_'+str(run_id))
+    if use_last_pt:
+        learner.load('lm_last_fit'+'_'+str(run_id))
     learner.unfreeze()
 
     start = timer()
